@@ -1,33 +1,25 @@
-from bokeh.io import curdoc
-from bokeh.models import ColumnDataSource, Slider, TextInput
-from bokeh.layouts import column
-from bokeh.plotting import figure
+import ctypes
+import os
+import streamlit as st
 
-# Import the Rust function
-from rust_bokeh_app import double_value
+# Load the Rust shared library
+if os.name == "nt":  # Windows
+    rust_lib = ctypes.CDLL("./target/release/rust_library.dll")
+else:  # Linux/Mac
+    rust_lib = ctypes.CDLL("./target/release/librust_library.so")
 
-# Initialize data source
-source = ColumnDataSource(data=dict(x=[0, 1, 2], y=[0, 1, 4]))
+# Define the Rust function signature
+rust_lib.square.argtypes = [ctypes.c_double]
+rust_lib.square.restype = ctypes.c_double
 
-# Create a plot
-plot = figure(height=400, width=400, title="Rust + Bokeh App")
-plot.line("x", "y", source=source, line_width=3)
+# Streamlit app
+st.title("Rust + Streamlit Without Maturin")
+st.write("This app uses a Rust shared library to calculate the square of a number.")
 
-# Widgets
-text_input = TextInput(value="2.0", title="Input Value:")
-slider = Slider(start=0, end=10, value=1, step=0.1, title="Multiplier")
+# Input
+number = st.number_input("Enter a number to square:", value=1.0, step=0.1)
 
-# Callback function
-def update_data(attr, old, new):
-    input_value = float(text_input.value)
-    multiplier = slider.value
-    new_y = [double_value(x * multiplier) for x in [0, 1, 2]]
-    source.data = dict(x=[0, 1, 2], y=new_y)
-
-# Connect widgets to callback
-text_input.on_change("value", update_data)
-slider.on_change("value", update_data)
-
-# Layout and add to document
-layout = column(text_input, slider, plot)
-curdoc().add_root(layout)
+# Call Rust function and display result
+if st.button("Calculate Square"):
+    result = rust_lib.square(number)
+    st.success(f"The square of {number} is {result}")
